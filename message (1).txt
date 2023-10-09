@@ -1,0 +1,166 @@
+import sys
+
+# Tabela de símbolos pré-definidos
+symbol_table = {
+    "SP": 0,
+    "LCL": 1,
+    "ARG": 2,
+    "THIS": 3,
+    "THAT": 4,
+    "R0": 0,
+    "R1": 1,
+    "R2": 2,
+    "R3": 3,
+    "R4": 4,
+    "R5": 5,
+    "R6": 6,
+    "R7": 7,
+    "R8": 8,
+    "R9": 9,
+    "R10": 10,
+    "R11": 11,
+    "R12": 12,
+    "R13": 13,
+    "R14": 14,
+    "R15": 15,
+    "SCREEN": 16384,
+    "KBD": 24576
+}
+
+# Tabela de símbolos personalizados
+custom_symbols = {}
+
+# Adiciona um símbolo personalizado à tabela de símbolos
+def add_symbol(symbol, address):
+    custom_symbols[symbol] = address
+
+# Inicializa a tabela de símbolos personalizados com os rótulos predefinidos
+def initialize_custom_symbols():
+    for i in range(16):
+        symbol = "R" + str(i)
+        add_symbol(symbol, i)
+
+# Lê o arquivo de assembly (.asm) e retorna as instruções em uma lista
+def read_assembly_file(filename):
+    with open(filename, "r") as file:
+        instructions = [line.strip() for line in file.readlines() if line.strip()]
+    return instructions
+
+# Remove comentários e espaços em branco de uma instrução
+def clean_instruction(instruction):
+    if "//" in instruction:
+        instruction = instruction.split("//")[0]
+    return instruction.strip()
+
+# Converte um número decimal em uma sequência binária de 15 bits
+def decimal_to_binary(number):
+    binary = bin(number)[2:].zfill(15)
+    return binary
+
+# Converte uma instrução A em código binário
+def convert_a_instruction(instruction):
+    symbol = instruction[1:]
+    if symbol.isdigit():
+        address = int(symbol)
+    else:
+        if symbol not in custom_symbols:
+            add_symbol(symbol, len(custom_symbols) + 16)
+        address = custom_symbols[symbol]
+    return "0" + decimal_to_binary(address)
+
+# Converte uma instrução C em código binário
+def convert_c_instruction(instruction):
+    comp = "0"
+    dest = "000"
+    jump = "000"
+    
+    if "=" in instruction:
+        dest, comp = instruction.split("=")
+    if ";" in instruction:
+        comp, jump = instruction.split(";")
+    
+    binary = "111" + comp_table[comp] + dest_table[dest] + jump_table[jump]
+    return binary
+
+# Tabelas de tradução para as instruções C
+comp_table = {
+    "0": "0101010",
+    "1": "0111111",
+    "-1": "0111010",
+    "D": "0001100",
+    "A": "0110000",
+    "!D": "0001101",
+    "!A": "0110001",
+    "-D": "0001111",
+    "-A": "0110011",
+    "D+1": "0011111",
+    "A+1": "0110111",
+    "D-1": "0001110",
+    "A-1": "0110010",
+    "D+A": "0000010",
+    "D-A": "0010011",
+    "A-D": "0000111",
+    "D&A": "0000000",
+    "D|A": "0010101",
+    "M": "1110000",
+    "!M": "1110001",
+    "-M": "1110011",
+    "M+1": "1110111",
+    "M-1": "1110010",
+    "D+M": "1000010",
+    "D-M": "1010011",
+    "M-D": "1000111",
+    "D&M": "1000000",
+    "D|M": "1010101"
+}
+
+dest_table = {
+    "null": "000",
+    "M": "001",
+    "D": "010",
+    "MD": "011",
+    "A": "100",
+    "AM": "101",
+    "AD": "110",
+    "AMD": "111"
+}
+
+jump_table = {
+    "null": "000",
+    "JGT": "001",
+    "JEQ": "010",
+    "JGE": "011",
+    "JLT": "100",
+    "JNE": "101",
+    "JLE": "110",
+    "JMP": "111"
+}
+
+# Função principal
+def main():
+    if len(sys.argv) != 2:
+        print("Uso: python asm_to_bin.py arquivo.asm")
+        return
+    
+    initialize_custom_symbols()
+    instructions = read_assembly_file(sys.argv[1])
+    binary_code = []
+    
+    for instruction in instructions:
+        instruction = clean_instruction(instruction)
+        
+        if instruction.startswith("@"):
+            binary = convert_a_instruction(instruction)
+        else:
+            binary = convert_c_instruction(instruction)
+        
+        binary_code.append(binary)
+    
+    output_filename = sys.argv[1].replace(".asm", ".bin")
+    with open(output_filename, "w") as file:
+        file.write("\n".join(binary_code))
+    
+    print("Conversão concluída. O código binário foi salvo em", output_filename)
+
+if __name__ == "__main__":
+    main()

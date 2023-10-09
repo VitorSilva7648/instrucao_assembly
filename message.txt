@@ -1,0 +1,266 @@
+import sys
+
+# Dicionário de segmentos de memória
+memory_segments = {
+    "local": "LCL",
+    "argument": "ARG",
+    "this": "THIS",
+    "that": "THAT",
+    "temp": "R5"
+}
+
+# Dicionário de comandos aritméticos
+arithmetic_commands = {
+    "add": "+",
+    "sub": "-",
+    "neg": "-",
+    "eq": "JEQ",
+    "gt": "JGT",
+    "lt": "JLT",
+    "and": "&",
+    "or": "|",
+    "not": "!"
+}
+
+# Gera um rótulo único
+def generate_label():
+    global label_count
+    label = f"LABEL{label_count}"
+    label_count += 1
+    return label
+
+# Escreve uma instrução em assembly no arquivo de saída
+def write_assembly_instruction(instruction):
+    with open(output_filename, "a") as file:
+        file.write(instruction + "\n")
+
+# Traduz o comando de adição (add) para assembly
+def translate_add():
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("AM=M-1")
+    write_assembly_instruction("D=M")
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("M=M+D")
+
+# Traduz o comando de subtração (sub) para assembly
+def translate_sub():
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("AM=M-1")
+    write_assembly_instruction("D=M")
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("M=M-D")
+
+# Traduz o comando de negação (neg) para assembly
+def translate_neg():
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("M=-M")
+
+# Traduz o comando de igualdade (eq) para assembly
+def translate_eq():
+    label1 = generate_label()
+    label2 = generate_label()
+    
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("AM=M-1")
+    write_assembly_instruction("D=M")
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("D=M-D")
+    write_assembly_instruction(f"@{label1}")
+    write_assembly_instruction("D;JEQ")
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("M=0")
+    write_assembly_instruction(f"@{label2}")
+    write_assembly_instruction("0;JMP")
+    write_assembly_instruction(f"({label1})")
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("M=-1")
+    write_assembly_instruction(f"({label2})")
+
+# Traduz o comando de maior que (gt) para assembly
+def translate_gt():
+    label1 = generate_label()
+    label2 = generate_label()
+    
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("AM=M-1")
+    write_assembly_instruction("D=M")
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("D=M-D")
+    write_assembly_instruction(f"@{label1}")
+    write_assembly_instruction("D;JGT")
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("M=0")
+    write_assembly_instruction(f"@{label2}")
+    write_assembly_instruction("0;JMP")
+    write_assembly_instruction(f"({label1})")
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("M=-1")
+    write_assembly_instruction(f"({label2})")
+
+# Traduz o comando de menor que (lt) para assembly
+def translate_lt():
+    label1 = generate_label()
+    label2 = generate_label()
+    
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("AM=M-1")
+    write_assembly_instruction("D=M")
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("D=M-D")
+    write_assembly_instruction(f"@{label1}")
+    write_assembly_instruction("D;JLT")
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("M=0")
+    write_assembly_instruction(f"@{label2}")
+    write_assembly_instruction("0;JMP")
+    write_assembly_instruction(f"({label1})")
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("M=-1")
+    write_assembly_instruction(f"({label2})")
+
+# Traduz o comando de operação lógica E (and) para assembly
+def translate_and():
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("AM=M-1")
+    write_assembly_instruction("D=M")
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("M=M&D")
+
+# Traduz o comando de operação lógica OU (or) para assembly
+def translate_or():
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("AM=M-1")
+    write_assembly_instruction("D=M")
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("M=M|D")
+
+# Traduz o comando de operação lógica NÃO (not) para assembly
+def translate_not():
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M-1")
+    write_assembly_instruction("M=!M")
+
+# Traduz o comando push para assembly
+def translate_push(segment, index):
+    if segment == "constant":
+        write_assembly_instruction(f"@{index}")
+        write_assembly_instruction("D=A")
+    elif segment == "temp":
+        write_assembly_instruction(f"@{memory_segments[segment]}")
+        write_assembly_instruction("D=A")
+        write_assembly_instruction(f"@{index}")
+        write_assembly_instruction("A=D+A")
+        write_assembly_instruction("D=M")
+    elif segment == "pointer" or segment == "static":
+        write_assembly_instruction(f"@{memory_segments[segment]}")
+        write_assembly_instruction("D=M")
+        write_assembly_instruction(f"@{index}")
+        write_assembly_instruction("A=D+A")
+        write_assembly_instruction("D=M")
+    else:
+        write_assembly_instruction(f"@{memory_segments[segment]}")
+        write_assembly_instruction("D=M")
+        write_assembly_instruction(f"@{index}")
+        write_assembly_instruction("A=D+A")
+        write_assembly_instruction("D=M")
+    
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("A=M")
+    write_assembly_instruction("M=D")
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("M=M+1")
+
+# Traduz o comando pop para assembly
+def translate_pop(segment, index):
+    if segment == "temp":
+        write_assembly_instruction(f"@{memory_segments[segment]}")
+        write_assembly_instruction("D=A")
+        write_assembly_instruction(f"@{index}")
+        write_assembly_instruction("D=D+A")
+        write_assembly_instruction("@R13")
+        write_assembly_instruction("M=D")
+    elif segment == "pointer" or segment == "static":
+        write_assembly_instruction(f"@{memory_segments[segment]}")
+        write_assembly_instruction("D=M")
+        write_assembly_instruction(f"@{index}")
+        write_assembly_instruction("D=D+A")
+        write_assembly_instruction("@R13")
+        write_assembly_instruction("M=D")
+    else:
+        write_assembly_instruction(f"@{memory_segments[segment]}")
+        write_assembly_instruction("D=M")
+        write_assembly_instruction(f"@{index}")
+        write_assembly_instruction("D=D+A")
+        write_assembly_instruction("@R13")
+        write_assembly_instruction("M=D")
+    
+    write_assembly_instruction("@SP")
+    write_assembly_instruction("AM=M-1")
+    write_assembly_instruction("D=M")
+    write_assembly_instruction("@R13")
+    write_assembly_instruction("A=M")
+    write_assembly_instruction("M=D")
+
+# Função principal
+def main():
+    if len(sys.argv) != 2:
+        print("Uso: python vm_to_asm.py arquivo.vm")
+        return
+    
+    global label_count
+    label_count = 0
+    
+    global output_filename
+    output_filename = sys.argv[1].replace(".vm", ".asm")
+    
+    with open(output_filename, "w") as file:
+        file.write("")
+    
+    with open(sys.argv[1], "r") as file:
+        lines = [line.strip() for line in file.readlines() if line.strip()]
+    
+    for line in lines:
+        if line.startswith("//"):
+            continue
+        
+        parts = line.split(" ")
+        command = parts[0]
+        
+        if command in arithmetic_commands:
+            if command == "neg" or command == "not":
+                translate_neg()
+            elif command == "eq":
+                translate_eq()
+            elif command == "gt":
+                translate_gt()
+            elif command == "lt":
+                translate_lt()
+            else:
+                translate_add_or_sub(command)
+        elif command == "push":
+            segment = parts[1]
+            index = int(parts[2])
+            translate_push(segment, index)
+        elif command == "pop":
+            segment = parts[1]
+            index = int(parts[2])
+            translate_pop(segment, index)
+    
+    print("Conversão concluída. O código assembly foi salvo em", output_filename)
+
+if __name__ == "__main__":
+    main()
